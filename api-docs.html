@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interview Chat API</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    const spec = {
+      openapi: "3.0.3",
+      info: {
+        title: "Interview Chat API",
+        version: "1.0.0",
+        description: "REST API for the interview chat boilerplate — users, chats, and messages."
+      },
+      servers: [
+        { url: "http://localhost:3000", description: "Local dev server" }
+      ],
+      components: {
+        schemas: {
+          User: {
+            type: "object",
+            properties: {
+              id:           { type: "integer", example: 1 },
+              username:     { type: "string", example: "alice" },
+              display_name: { type: "string", example: "Alice Smith" },
+              created_at:   { type: "string", format: "date-time", example: "2024-01-15T10:00:00.000Z" }
+            },
+            required: ["id", "username", "display_name", "created_at"]
+          },
+          Chat: {
+            type: "object",
+            properties: {
+              id:                    { type: "integer", example: 1 },
+              name:                  { type: "string", example: "Alice Smith, Bob Jones" },
+              participant_usernames: { type: "string", description: "Comma-separated list of usernames", example: "alice,bob" },
+              created_at:            { type: "string", format: "date-time", example: "2024-01-15T10:05:00.000Z" }
+            },
+            required: ["id", "name", "participant_usernames", "created_at"]
+          },
+          Message: {
+            type: "object",
+            properties: {
+              id:                   { type: "integer", example: 1 },
+              chat_id:              { type: "integer", example: 1 },
+              sender_id:            { type: "integer", example: 1 },
+              sender_username:      { type: "string", example: "alice" },
+              sender_display_name:  { type: "string", example: "Alice Smith" },
+              content:              { type: "string", example: "Hello!" },
+              sent_at:              { type: "string", format: "date-time", example: "2024-01-15T10:10:00.000Z" }
+            },
+            required: ["id", "chat_id", "sender_id", "sender_username", "sender_display_name", "content", "sent_at"]
+          },
+          Error: {
+            type: "object",
+            properties: {
+              error: { oneOf: [{ type: "string" }, { type: "object" }] }
+            },
+            required: ["error"]
+          }
+        }
+      },
+      paths: {
+        "/health": {
+          get: {
+            summary: "Health check",
+            operationId: "getHealth",
+            tags: ["Health"],
+            responses: {
+              "200": {
+                description: "Service is healthy",
+                content: {
+                  "application/json": {
+                    schema: {
+                      type: "object",
+                      properties: { status: { type: "string", example: "ok" } }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "/api/users": {
+          get: {
+            summary: "List all users",
+            operationId: "listUsers",
+            tags: ["Users"],
+            responses: {
+              "200": {
+                description: "Array of users ordered by username",
+                content: {
+                  "application/json": {
+                    schema: { type: "array", items: { "$ref": "#/components/schemas/User" } }
+                  }
+                }
+              }
+            }
+          },
+          post: {
+            summary: "Create a user",
+            operationId: "createUser",
+            tags: ["Users"],
+            requestBody: {
+              required: true,
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      username:     { type: "string", minLength: 2, maxLength: 32, pattern: "^[a-zA-Z0-9_]+$", example: "alice" },
+                      display_name: { type: "string", minLength: 2, maxLength: 64, example: "Alice Smith" }
+                    },
+                    required: ["username", "display_name"]
+                  }
+                }
+              }
+            },
+            responses: {
+              "201": {
+                description: "User created",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/User" } } }
+              },
+              "400": {
+                description: "Validation error",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+              },
+              "409": {
+                description: "Username already taken",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+              }
+            }
+          }
+        },
+        "/api/users/search": {
+          get: {
+            summary: "Search users",
+            operationId: "searchUsers",
+            tags: ["Users"],
+            parameters: [
+              {
+                name: "q",
+                in: "query",
+                required: true,
+                description: "Partial match against username or display_name",
+                schema: { type: "string", example: "ali" }
+              }
+            ],
+            responses: {
+              "200": {
+                description: "Matching users",
+                content: {
+                  "application/json": {
+                    schema: { type: "array", items: { "$ref": "#/components/schemas/User" } }
+                  }
+                }
+              },
+              "400": {
+                description: "Missing query parameter q",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+              }
+            }
+          }
+        },
+        "/api/users/{id}": {
+          get: {
+            summary: "Get a user by ID",
+            operationId: "getUserById",
+            tags: ["Users"],
+            parameters: [
+              { name: "id", in: "path", required: true, schema: { type: "integer" }, example: 1 }
+            ],
+            responses: {
+              "200": {
+                description: "User found",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/User" } } }
+              },
+              "404": {
+                description: "User not found",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+              }
+            }
+          }
+        },
+        "/api/chats": {
+          get: {
+            summary: "List chats",
+            operationId: "listChats",
+            tags: ["Chats"],
+            parameters: [
+              {
+                name: "user_id",
+                in: "query",
+                required: false,
+                description: "Filter to chats that include this user",
+                schema: { type: "integer", example: 1 }
+              }
+            ],
+            responses: {
+              "200": {
+                description: "Array of chats",
+                content: {
+                  "application/json": {
+                    schema: { type: "array", items: { "$ref": "#/components/schemas/Chat" } }
+                  }
+                }
+              },
+              "404": {
+                description: "user_id not found",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+              }
+            }
+          },
+          post: {
+            summary: "Create a chat",
+            operationId: "createChat",
+            tags: ["Chats"],
+            requestBody: {
+              required: true,
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      name:            { type: "string", maxLength: 128, description: "Optional chat name; defaults to participants' display names", example: "Design sync" },
+                      participant_ids: { type: "array", items: { type: "integer", minimum: 1 }, minItems: 2, example: [1, 2] }
+                    },
+                    required: ["participant_ids"]
+                  }
+                }
+              }
+            },
+            responses: {
+              "201": {
+                description: "Chat created",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Chat" } } }
+              },
+              "400": {
+                description: "Validation error",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+              },
+              "404": {
+                description: "One or more participant IDs not found",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+              }
+            }
+          }
+        },
+        "/api/chats/{id}": {
+          get: {
+            summary: "Get a chat by ID",
+            operationId: "getChatById",
+            tags: ["Chats"],
+            parameters: [
+              { name: "id", in: "path", required: true, schema: { type: "integer" }, example: 1 }
+            ],
+            responses: {
+              "200": {
+                description: "Chat found",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Chat" } } }
+              },
+              "404": {
+                description: "Chat not found",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+              }
+            }
+          }
+        },
+        "/api/chats/{id}/messages": {
+          get: {
+            summary: "List messages in a chat",
+            operationId: "listMessages",
+            tags: ["Messages"],
+            parameters: [
+              { name: "id", in: "path", required: true, description: "Chat ID", schema: { type: "integer" }, example: 1 },
+              {
+                name: "since",
+                in: "query",
+                required: false,
+                description: "ISO 8601 timestamp — only return messages sent after this time",
+                schema: { type: "string", format: "date-time", example: "2024-01-15T10:00:00.000Z" }
+              }
+            ],
+            responses: {
+              "200": {
+                description: "Array of messages ordered by sent_at ascending",
+                content: {
+                  "application/json": {
+                    schema: { type: "array", items: { "$ref": "#/components/schemas/Message" } }
+                  }
+                }
+              },
+              "404": {
+                description: "Chat not found",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+              }
+            }
+          },
+          post: {
+            summary: "Send a message",
+            operationId: "sendMessage",
+            tags: ["Messages"],
+            parameters: [
+              { name: "id", in: "path", required: true, description: "Chat ID", schema: { type: "integer" }, example: 1 }
+            ],
+            requestBody: {
+              required: true,
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      sender_id: { type: "integer", minimum: 1, example: 1 },
+                      content:   { type: "string", minLength: 1, maxLength: 4000, example: "Hello!" }
+                    },
+                    required: ["sender_id", "content"]
+                  }
+                }
+              }
+            },
+            responses: {
+              "201": {
+                description: "Message sent",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Message" } } }
+              },
+              "400": {
+                description: "Validation error",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+              },
+              "403": {
+                description: "Sender is not a participant of this chat",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+              },
+              "404": {
+                description: "Chat or sender not found",
+                content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+              }
+            }
+          }
+        }
+      },
+      tags: [
+        { name: "Health",   description: "Service health" },
+        { name: "Users",    description: "User management" },
+        { name: "Chats",    description: "Chat room management" },
+        { name: "Messages", description: "Messages within a chat" }
+      ]
+    };
+
+    SwaggerUIBundle({
+      spec,
+      dom_id: "#swagger-ui",
+      deepLinking: true,
+      presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+      layout: "BaseLayout"
+    });
+  </script>
+</body>
+</html>
