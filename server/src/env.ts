@@ -12,6 +12,7 @@ loadDotEnv(import.meta.url);
 
 const EnvSchema = z.object({
 	PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+	CLIENT_URL: z.string().url(),
 	DB_PATH: z
 		.string()
 		.min(1)
