@@ -15,6 +15,13 @@ cp server/.env.example server/.env
 cp client/.env.example client/.env
 ```
 
+Create a sqlite datbase file:
+
+```bash
+cd ./server/
+touch chat.db
+```
+
 ### Run the server
 
 ```bash
